@@ -1,14 +1,25 @@
 {
-  "name": "incozi-site",
+  "name": "incozi",
   "version": "1.0.0",
-  "description": "Static site with Express+SQLite backend for forms",
+  "description": "Full-Stack Consultation Platform - React + Express + Supabase",
+  "private": true,
   "main": "server.js",
   "scripts": {
+    "dev": "npm run dev:frontend & npm run dev:backend",
+    "dev:frontend": "react-scripts start",
+    "dev:backend": "nodemon server.js",
+    "build": "react-scripts build",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "server": "nodemon server.js",
+    "eject": "react-scripts eject",
+    "test": "react-scripts test"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.90.1",
+    "@fortawesome/fontawesome-svg-core": "^7.2.0",
+    "@fortawesome/free-solid-svg-icons": "^7.2.0",
+    "@fortawesome/react-fontawesome": "^3.3.0",
+    "@supabase/supabase-js": "^2.38.0",
+    "axios": "^1.6.2",
     "bcryptjs": "^3.0.3",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
@@ -16,9 +27,36 @@
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
-    "nodemailer": "^7.0.12"
+    "nodemailer": "^7.0.12",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0",
+    "socket.io": "^4.7.2",
+    "socket.io-client": "^4.7.2",
+    "stripe": "^13.10.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "autoprefixer": "^10.4.16",
+    "nodemon": "^3.0.1",
+    "postcss": "^8.4.31",
+    "react-scripts": "5.0.1",
+    "tailwindcss": "^3.3.0"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }

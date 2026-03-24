@@ -1,0 +1,63 @@
+/* src/styles/main.css */
+/* Main stylesheet - imports all modular CSS files */
+
+/* 1. Variables & Theme */
+@import url('./variables.css');
+
+/* 2. Reset & Normalize */
+@import url('./reset.css');
+
+/* 3. Typography */
+@import url('./typography.css');
+
+/* 4. Layout Utilities */
+@import url('./layout.css');
+
+/* 5. Responsive Design */
+@import url('./responsive.css');
+
+/* 6. Utility Classes */
+@import url('./utilities.css');
+
+/* ===== Global Styles ===== */
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-family);
+  color: var(--text-100);
+  background-color: var(--bg-100);
+  line-height: 1.6;
+}
+
+/* Smooth transitions globally */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Remove focus outline but keep accessibility */
+:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* Loading state */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Error state */
+.error {
+  color: var(--error-color);
+  border-color: var(--error-color);
+}
+
+/* Success state */
+.success {
+  color: var(--success-color);
+  border-color: var(--success-color);
+}

@@ -1,0 +1,201 @@
+/* src/styles/responsive.css */
+/* Responsive design breakpoints and mobile-first approach */
+
+/* ===== TABLET (768px and up) ===== */
+@media (min-width: 768px) {
+  .grid-2-sm { /* 2 columns on small screens and up */
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+  }
+
+  .hidden-sm {
+    display: none;
+  }
+
+  .visible-sm {
+    display: block;
+  }
+}
+
+/* ===== DESKTOP (1024px and up) ===== */
+@media (min-width: 1024px) {
+  .grid-3-md { /* 3 columns on medium screens and up */
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-md);
+  }
+
+  .hidden-md {
+    display: none;
+  }
+
+  .visible-md {
+    display: block;
+  }
+
+  /* Increase container width */
+  .container {
+    padding: 0 var(--spacing-lg);
+  }
+}
+
+/* ===== WIDE (1366px and up) ===== */
+@media (min-width: 1366px) {
+  .grid-4-lg { /* 4 columns on large screens */
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-md);
+  }
+
+  .hidden-lg {
+    display: none;
+  }
+
+  .visible-lg {
+    display: block;
+  }
+}
+
+/* ===== ULTRAWIDE (1920px and up) ===== */
+@media (min-width: 1920px) {
+  .hidden-xl {
+    display: none;
+  }
+
+  .visible-xl {
+    display: block;
+  }
+}
+
+/* ===== MOBILE FIRST APPROACH ===== */
+
+/* Show/Hide based on screen size */
+.show-mobile { display: block; }
+.show-tablet { display: none; }
+.show-desktop { display: none; }
+.show-wide { display: none; }
+
+@media (min-width: 768px) {
+  .show-mobile { display: none; }
+  .show-tablet { display: block; }
+}
+
+@media (min-width: 1024px) {
+  .show-tablet { display: none; }
+  .show-desktop { display: block; }
+}
+
+@media (min-width: 1366px) {
+  .show-desktop { display: none; }
+  .show-wide { display: block; }
+}
+
+/* ===== TOUCH-FRIENDLY (Mobile) ===== */
+@media (max-width: 767px) {
+  /* Increase button/tap target size */
+  button, a, input[type="button"] {
+    min-height: 44px; /* Apple recommendation */
+    min-width: 44px;
+  }
+
+  /* Simplify navigation */
+  nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-100);
+    border-top: 1px solid var(--border-light);
+  }
+
+  /* Stack items vertically */
+  .flex-row {
+    flex-direction: column;
+  }
+
+  .grid-auto {
+    grid-template-columns: 1fr; /* Single column on mobile */
+  }
+
+  /* Reduce padding on mobile */
+  body {
+    padding-bottom: 60px; /* For fixed bottom nav */
+  }
+}
+
+/* ===== LANDSCAPE MODE ===== */
+@media (orientation: landscape) {
+  /* Reduce vertical padding */
+  .section {
+    padding: var(--spacing-lg) 0;
+  }
+
+  h1 { font-size: var(--font-3xl); }
+  h2 { font-size: var(--font-2xl); }
+}
+
+/* ===== HIGH DPI (Retina Displays) ===== */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Images will automatically look crisp */
+  img {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* ===== REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== DARK MODE ===== */
+@media (prefers-color-scheme: dark) {
+  /* Override color variables if dark mode is enabled */
+  /* Currently defined in variables.css (commented out) */
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  * {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  a,
+  a:visited {
+    text-decoration: underline;
+  }
+
+  a[href]:after {
+    content: " (" attr(href) ")";
+  }
+
+  img {
+    max-width: 100% !important;
+  }
+
+  @page {
+    margin: 0.5cm;
+  }
+
+  p,
+  h2,
+  h3 {
+    orphans: 3;
+    widows: 3;
+  }
+
+  h2,
+  h3 {
+    page-break-after: avoid;
+  }
+}

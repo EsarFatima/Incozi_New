@@ -14,7 +14,7 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function createAdmin() {
-    const email = 'admin@incozi.com'; 
+    const email = 'incozillc@gmail.com'; 
     const password = 'admin123'; 
     
     console.log(`Setting up admin user: ${email}`);

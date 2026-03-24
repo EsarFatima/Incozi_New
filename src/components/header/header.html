@@ -1,0 +1,73 @@
+<!-- src/components/header/header.html -->
+<!-- Header Component Markup -->
+
+<header class="header">
+  <div class="container header__container">
+    <!-- Logo -->
+    <div class="header__logo-section">
+      <a href="/index.html" class="header__logo">
+        <span class="header__logo-text">INCOZI</span>
+      </a>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="header__nav">
+      <a href="/index.html" class="header__nav-link">Home</a>
+      <a href="/pages/services/index.html" class="header__nav-link">Services</a>
+      <a href="/pages/consultation.html" class="header__nav-link">Book Now</a>
+      <a href="/pages/blog.html" class="header__nav-link">Blog</a>
+      <a href="/pages/about-us.html" class="header__nav-link">About</a>
+    </nav>
+
+    <!-- Right Section -->
+    <div class="header__actions flex gap-md">
+      <!-- Search -->
+      <input 
+        type="search" 
+        class="header__search" 
+        placeholder="Search services..."
+        data-search
+      >
+
+      <!-- Cart -->
+      <a href="/pages/cart.html" class="header__cart">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle cx="9" cy="21" r="1"></circle>
+          <circle cx="20" cy="21" r="1"></circle>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+        </svg>
+        <span class="header__cart-badge" data-cart-count>0</span>
+      </a>
+
+      <!-- User Menu -->
+      <div class="header__user-menu">
+        <button class="header__user-toggle" id="userMenuToggle">
+          <span data-user-name>Account</span>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M6 9l6 6 6-6"></path>
+          </svg>
+        </button>
+
+        <!-- Dropdown Menu -->
+        <div class="header__user-dropdown hidden" id="userDropdown">
+          <a href="/pages/profile.html" class="header__dropdown-item">
+            <span data-user-name>Profile</span>
+          </a>
+          <a href="/pages/dashboard.html" class="header__dropdown-item">Dashboard</a>
+          <a href="/pages/account.html" class="header__dropdown-item">Settings</a>
+          <hr>
+          <button class="header__dropdown-item" data-logout>Logout</button>
+        </div>
+      </div>
+
+      <!-- Mobile Menu Toggle -->
+      <button class="header__mobile-toggle" id="mobileMenuToggle">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
