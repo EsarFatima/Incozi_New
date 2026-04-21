@@ -69,6 +69,38 @@ module.exports = (supabase) => {
     }
   });
 
+  // GET CURRENT USER PROFILE
+  router.get('/me', async (req, res) => {
+    try {
+      // Get user ID from JWT token (added by authenticateToken middleware)
+      const token = req.headers.authorization?.split(' ')[1];
+      
+      if (!token) {
+        return res.status(401).json({ error: 'No token provided' });
+      }
+
+      // Verify and decode the token
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const userId = decoded.id;
+
+      // Fetch user from database
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('id, email, full_name, role, is_verified')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error || !user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error('Get User Error:', error);
+      res.status(401).json({ error: 'Invalid token' });
+    }
+  });
+
   // LOGIN ROUTE
   router.post('/login', async (req, res) => {
     try {
@@ -743,6 +775,94 @@ module.exports = (supabase) => {
     } catch (error) {
       console.error('Cancel Service Error:', error);
       res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // REGISTER ROUTE (Alias for /signup - for React compatibility)
+  router.post('/register', async (req, res) => {
+    try {
+      const { email, password, name, full_name } = req.body;
+      
+      // Support both 'name' and 'full_name' from React frontend
+      const displayName = full_name || name;
+
+      if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required' });
+      }
+
+      // 1. Check if user exists
+      const { data: existing, error: existingError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (existingError) {
+        console.error('Register check error:', existingError);
+        return res.status(500).json({ error: 'Server error' });
+      }
+
+      if (existing) {
+        return res.status(400).json({ error: 'Email already registered' });
+      }
+
+      // 2. Hash Password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      // 3. Generate Verification Token
+      const token = crypto.randomBytes(32).toString('hex');
+
+      // 4. Insert User
+      const { data: newUser, error: insertError } = await supabase
+        .from('users')
+        .insert([{ 
+          email, 
+          password_hash: hashedPassword, 
+          full_name: displayName || null, 
+          verification_token: token, 
+          is_verified: false,
+          role: 'client'
+        }])
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Register insert error:', insertError);
+        return res.status(500).json({ error: insertError.message || 'Internal server error' });
+      }
+
+      // 5. Create JWT token for immediate login
+      const jwtToken = jwt.sign(
+        { id: newUser.id, email: newUser.email, role: newUser.role, is_verified: newUser.is_verified },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      // 6. Send Email (optional - can be removed if not needed)
+      try {
+        const baseUrl = process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+        const verificationLink = `${baseUrl}/api/auth/verify?token=${token}`;
+        await emailService.sendVerificationEmail(email, verificationLink);
+      } catch (emailError) {
+        console.warn('Email send warning (user created successfully):', emailError);
+      }
+
+      res.status(201).json({ 
+        message: 'Registration successful',
+        token: jwtToken,
+        user: {
+          id: newUser.id,
+          full_name: newUser.full_name,
+          email: newUser.email,
+          role: newUser.role,
+          is_verified: newUser.is_verified
+        }
+      });
+
+    } catch (error) {
+      console.error('Register Error:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 

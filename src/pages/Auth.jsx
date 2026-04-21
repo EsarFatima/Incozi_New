@@ -60,8 +60,8 @@ function Auth() {
               <label className="block text-sm font-bold mb-2 text-text-100 uppercase tracking-wide">Full Name</label>
               <input
                 type="text"
-                name="name"
-                value={formData.name}
+                name="full_name" // Changed from 'name' to 'full_name' for consistency with backend
+                value={formData.full_name || formData.name || ''}
                 onChange={handleChange}
                 placeholder="John Doe"
                 className="w-full px-4 py-3 border border-bg-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-accent-200 focus:border-transparent transition-all"

@@ -1,4 +1,4 @@
-# INCOZI - Consultation Booking Platform
+run dev# INCOZI - Consultation Booking Platform
 
 A full-stack web application for connecting entrepreneurs with business consultants. Built with Node.js, React, and Supabase.
 

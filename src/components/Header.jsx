@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faXmark, faUser, faBriefcase, faCartShopping, faArrowRightFromBracket, faChevronDown, faCommentDots, faPaperPlane } from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '../hooks/useAuth.js';
 
 export default function Header() {
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
@@ -14,14 +16,11 @@ export default function Header() {
   ]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    setIsAuthenticated(!!token);
-    
     // Simulate initial messages if authenticated
-    if (token && messages.length === 1) {
+    if (isAuthenticated && messages.length === 1) {
       setMessages(prev => [...prev, {
         id: 2,
-        text: "I see you're logged in. Feel free to ask about your active services or any new formations!",
+        text: `Welcome back${user?.full_name ? ', ' + user.full_name : ''}! Feel free to ask about your active services or any new formations!`,
         isBot: true,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }]);
@@ -36,7 +35,7 @@ export default function Header() {
     };
     window.addEventListener('cartUpdated', handleCartUpdate);
     return () => window.removeEventListener('cartUpdated', handleCartUpdate);
-  }, []);
+  }, [isAuthenticated, user, messages.length]);
 
   const handleSendMessage = (e) => {
     e.preventDefault();
@@ -68,9 +67,9 @@ export default function Header() {
   const handleSidebarClose = () => setSidebarOpen(false);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    logout();
     handleSidebarClose();
-    window.location.href = '/';
+    navigate('/');
   };
 
   return (
@@ -100,9 +99,15 @@ export default function Header() {
 
           {/* Right Section - Login, Cart, then Hamburger at far right */}
           <div className="header-right">
-            <Link to="/account" className="header-icon" title="My Account">
-              <FontAwesomeIcon icon={faUser} />
-            </Link>
+            {!isAuthenticated ? (
+              <Link to="/auth" className="header-icon" title="Sign In">
+                <FontAwesomeIcon icon={faUser} />
+              </Link>
+            ) : (
+              <Link to="/dashboard" className="header-icon" title="Dashboard">
+                <FontAwesomeIcon icon={faUser} style={{ color: 'var(--accent-200)' }} />
+              </Link>
+            )}
             <Link to="/checkout" className="header-icon cart-link" title="Cart">
               <FontAwesomeIcon icon={faCartShopping} />
               {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
@@ -157,7 +162,7 @@ export default function Header() {
                      <FontAwesomeIcon icon={faBriefcase} />
                    </div>
                   <p>Please log in to chat with our business experts.</p>
-                  <Link to="/account" onClick={() => setChatOpen(false)} className="login-link-chat">Log In Now</Link>
+                  <Link to="/auth" onClick={() => setChatOpen(false)} className="login-link-chat">Log In Now</Link>
                 </div>
               )}
             </div>
@@ -226,7 +231,7 @@ export default function Header() {
 
             {/* Blog Section */}
             <li className="sidebar-group">
-              <Link to="/services" className="sidebar-group-title" style={{ display: 'block', cursor: 'pointer' }} onClick={handleSidebarClose}>
+              <Link to="/blog" className="sidebar-group-title" style={{ display: 'block', cursor: 'pointer' }} onClick={handleSidebarClose}>
                 Blog
               </Link>
             </li>
@@ -234,16 +239,25 @@ export default function Header() {
             <li className="sidebar-divider"></li>
 
             {/* User Actions */}
-            <li>
-              <Link to="/account" className="sidebar-link-item" onClick={handleSidebarClose}>
-                <FontAwesomeIcon icon={faUser} /> My Account
-              </Link>
-            </li>
-            <li>
-              <Link to="/dashboard" className="sidebar-link-item" onClick={handleSidebarClose}>
-                <FontAwesomeIcon icon={faBriefcase} /> My Services
-              </Link>
-            </li>
+            {!isAuthenticated ? (
+              <li>
+                <Link to="/auth" className="sidebar-link-item" onClick={handleSidebarClose}>
+                  <FontAwesomeIcon icon={faUser} /> Sign In / Register
+                </Link>
+              </li>
+            ) : (
+              <>
+                <li className="sidebar-user-info" style={{ padding: '0.85rem 1.5rem', marginBottom: '0.5rem' }}>
+                   <div style={{ fontWeight: '700', color: 'var(--text-100)' }}>{user?.full_name || 'User'}</div>
+                   <div style={{ fontSize: '0.8rem', color: 'var(--text-200)' }}>{user?.email}</div>
+                </li>
+                <li>
+                  <Link to="/dashboard" className="sidebar-link-item" onClick={handleSidebarClose}>
+                    <FontAwesomeIcon icon={faBriefcase} /> My Services
+                  </Link>
+                </li>
+              </>
+            )}
             <li>
               <Link to="/checkout" className="sidebar-link-item" onClick={handleSidebarClose}>
                 <FontAwesomeIcon icon={faCartShopping} /> Cart

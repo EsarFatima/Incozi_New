@@ -65,33 +65,33 @@ code {
   }
 
   .btn-primary {
-    background-color: var(--accent-dark);
+    background-color: var(--accent-200);
     color: white;
     opacity: 1;
   }
 
   .btn-primary:hover {
-    opacity: 0.9;
+    background-color: #004d6a; /* Darker version of accent-200 */
   }
 
   .btn-secondary {
-    background-color: var(--accent-light);
+    background-color: var(--accent-100);
     color: white;
     opacity: 1;
   }
 
   .btn-secondary:hover {
-    opacity: 0.9;
+    background-color: #5ab3e2; /* Darker version of accent-100 */
   }
 
   .btn-outline {
-    border: 2px solid var(--accent-dark);
-    color: var(--accent-dark);
+    border: 2px solid var(--accent-200);
+    color: var(--accent-200);
     background-color: transparent;
   }
 
   .btn-outline:hover {
-    background-color: var(--primary-light);
+    background-color: var(--primary-100);
   }
 
   .card {
