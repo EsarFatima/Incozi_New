@@ -98,14 +98,20 @@ export const userService = {
 };
 
 export const adminService = {
-  getDashboard: () =>
-    apiClient.get('/admin/dashboard'),
-  getUsers: (filters) =>
-    apiClient.get('/admin/users', { params: filters }),
-  getConsultations: (filters) =>
-    apiClient.get('/admin/consultations', { params: filters }),
-  getPayments: (filters) =>
-    apiClient.get('/admin/payments', { params: filters }),
+  getUsers: (filters) => apiClient.get('/admin/users', { params: filters }),
+  getUserDocuments: (userId) => apiClient.get(`/admin/users/${userId}/documents`),
+  getStats: () => apiClient.get('/admin/stats'),
+  getDashboard: () => apiClient.get('/admin/dashboard'),
+  getConsultations: (filters) => apiClient.get('/admin/consultations', { params: filters }),
+  getPayments: (filters) => apiClient.get('/admin/payments', { params: filters }),
+};
+
+export const documentService = {
+  upload: (formData) => apiClient.post('/documents/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getMyDocuments: () => apiClient.get('/documents/my-documents'),
+  delete: (id) => apiClient.delete(`/documents/${id}`),
 };
 
 export default apiClient;

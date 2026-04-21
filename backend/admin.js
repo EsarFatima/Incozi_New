@@ -25,6 +25,38 @@ function adminRoutes(supabase) {
     // Apply admin check to all routes in this router
     router.use(requireAdmin);
 
+    // GET /users
+    router.get('/users', async (req, res) => {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('id, full_name, email, role, created_at')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            res.json(data);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    // GET /users/:userId/documents
+    router.get('/users/:userId/documents', async (req, res) => {
+        try {
+            const { userId } = req.params;
+            const { data, error } = await supabase
+                .from('documents')
+                .select('*')
+                .eq('user_id', userId)
+                .order('uploaded_at', { ascending: false });
+
+            if (error) throw error;
+            res.json(data);
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
     // GET /stats
     router.get('/stats', async (req, res) => {
         try {
