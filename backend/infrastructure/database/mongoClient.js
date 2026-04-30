@@ -4,15 +4,13 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 
-const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGODB_DEV_URI || 'mongodb://localhost:27017/incozi';
+// Use local development URI by default, fallback to production URI
+const MONGODB_URI = process.env.MONGODB_DEV_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/incozi';
 
 const mongoClient = {
   connect: async () => {
     try {
-      await mongoose.connect(MONGODB_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-      });
+      await mongoose.connect(MONGODB_URI);
       console.log('✅ MongoDB connected successfully');
       return mongoose.connection;
     } catch (error) {

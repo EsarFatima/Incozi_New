@@ -1,222 +1,188 @@
 const express = require('express');
 const router = express.Router();
+const { Message, User, Consultation } = require('./infrastructure/models');
 const { sendAdminChatMessageNotification } = require('./emailService');
+const { authenticateToken } = require('./middleware');
 
-module.exports = (supabase) => {
+// ============================================================================
+// POST /api/chat/session - Get or create chat session
+// ============================================================================
+router.post('/session', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
 
-    // 1. Get or Create Chat Session for current user
-    router.post('/session', async (req, res) => { // User is already in req.user from middleware
-        try {
-            const userId = req.user.id; // Using req.user.id
-
-            // Check for an existing open session
-            const { data: existingSession, error: fetchError } = await supabase
-                .from('chat_sessions')
-                .select('*')
-                .eq('user_id', userId)
-                .eq('status', 'open')
-                .single();
-
-            if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is 'not found'
-                throw fetchError;
-            }
-
-            if (existingSession) {
-                return res.json(existingSession);
-            }
-
-            // Create new session
-            const { data: newSession, error: createError } = await supabase
-                .from('chat_sessions')
-                .insert([{ user_id: userId, status: 'open' }])
-                .select()
-                .single();
-
-            if (createError) throw createError;
-
-            return res.json(newSession);
-
-        } catch (err) {
-            console.error('Error in /session:', err);
-            res.status(500).json({ error: 'Failed to initialize chat session' });
-        }
+    // Check for existing active session (consultations serve as sessions)
+    let consultation = await Consultation.findOne({
+      userId,
+      status: { $in: ['active', 'pending'] }
     });
 
-    // 2. Get Messages for a Session
-    router.get('/session/:sessionId/messages', async (req, res) => {
-        try {
-            const { sessionId } = req.params;
-            const userId = req.user.id; // req.user.id
+    if (!consultation) {
+      // Create new consultation as session with unique bookingId
+      const bookingId = 'CHAT_' + Date.now() + '_' + Math.random().toString(36).substring(7);
+      consultation = await Consultation.create({
+        bookingId,
+        userId,
+        status: 'active',
+        scheduledAt: null
+      });
+    }
 
-            // Verify ownership or admin
-            // Fetch session to check owner
-            const { data: session, error: sessionError } = await supabase
-                .from('chat_sessions')
-                .select('user_id')
-                .eq('id', sessionId)
-                .single();
-            
-            if (sessionError) throw sessionError;
+    res.json({
+      session: {
+        id: consultation._id,
+        userId: consultation.userId,
+        status: consultation.status
+      }
+    });
+  } catch (err) {
+    console.error('Error in /session:', err);
+    res.status(500).json({ error: 'Failed to initialize chat session', details: err.message });
+  }
+});
 
-            if (session.user_id != userId && req.user.role !== 'admin') {
-                return res.status(403).json({ error: 'Unauthorized' });
-            }
+// ============================================================================
+// GET /api/chat/session/:sessionId/messages - Get messages for a session
+// ============================================================================
+router.get('/session/:sessionId/messages', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const userId = req.user.id;
 
-            const { data: messages, error } = await supabase
-                .from('chat_messages')
-                .select('*, users(full_name, role)') 
-                .eq('session_id', sessionId)
-                .order('created_at', { ascending: true });
+    // Verify ownership or admin
+    const consultation = await Consultation.findById(sessionId);
 
-            if (error) throw error;
+    if (!consultation) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
 
-            res.json(messages);
+    if (consultation.userId.toString() !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
 
-        } catch (err) {
-            console.error('Error fetching messages:', err);
-            res.status(500).json({ error: 'Failed to fetch messages' });
-        }
+    // Fetch messages for this consultation
+    const messages = await Message.find({ consultationId: sessionId })
+      .populate('senderId', 'firstName lastName role')
+      .sort({ createdAt: 1 });
+
+    res.json(messages);
+  } catch (err) {
+    console.error('Error fetching messages:', err);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// ============================================================================
+// POST /api/chat/message - Send a message
+// ============================================================================
+router.post('/message', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId, message } = req.body;
+    const senderId = req.user.id;
+
+    if (!message || !sessionId) {
+      return res.status(400).json({ error: 'Missing sessionId or message' });
+    }
+
+    // Verify access to session
+    const consultation = await Consultation.findById(sessionId);
+
+    if (!consultation) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    if (consultation.userId.toString() !== senderId && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    // Create message
+    const newMessage = await Message.create({
+      consultationId: sessionId,
+      sender: senderId,
+      senderId: senderId,
+      content: message,
+      createdAt: new Date()
     });
 
-    // 3. Send Message
-    router.post('/message', async (req, res) => {
-        try {
-            const { sessionId, message } = req.body;
-            const senderId = req.user.id;
+    // Update consultation timestamp
+    consultation.updatedAt = new Date();
+    await consultation.save();
 
-            if (!message || !sessionId) {
-                return res.status(400).json({ error: 'Missing sessionId or message' });
-            }
+    // Notify admin via email if sender is not admin
+    if (req.user.role !== 'admin') {
+      try {
+        const user = await User.findById(req.user.id);
+        const senderName = user?.firstName || 'Client';
 
-            // Verify access to session
-            const { data: session, error: sessionError } = await supabase
-                .from('chat_sessions')
-                .select('*')
-                .eq('id', sessionId)
-                .single();
+        sendAdminChatMessageNotification(senderName, user?.email || '', message)
+          .catch(err => console.error('Error sending chat notification email:', err));
+      } catch (err) {
+        console.error('Error getting user for email:', err);
+      }
+    }
 
-            if (sessionError) throw sessionError;
+    res.json(newMessage);
+  } catch (err) {
+    console.error('Error sending message:', err);
+    res.status(500).json({ error: 'Failed to send message', details: err.message });
+  }
+});
 
-            if (session.user_id != senderId && req.user.role !== 'admin') {
-                return res.status(403).json({ error: 'Unauthorized' });
-            }
+// ============================================================================
+// GET /api/chat/admin/sessions - Get all open sessions (Admin)
+// ============================================================================
+router.get('/admin/sessions', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
 
-            // Insert message
-            const { data: newMessage, error: insertError } = await supabase
-                .from('chat_messages')
-                .insert([{
-                    session_id: sessionId,
-                    sender_id: senderId,
-                    message: message
-                }])
-                .select()
-                .single();
+    const sessions = await Consultation.find({ status: { $in: ['active', 'pending'] } })
+      .populate('userId', 'firstName lastName email')
+      .sort({ updatedAt: -1 });
 
-            if (insertError) throw insertError;
+    res.json(sessions);
+  } catch (err) {
+    console.error('Error admin sessions:', err);
+    res.status(500).json({ error: 'Failed to fetch sessions' });
+  }
+});
 
-            // Update session timestamp
-            await supabase
-                .from('chat_sessions')
-                .update({ updated_at: new Date() })
-                .eq('id', sessionId);
+// ============================================================================
+// DELETE /api/chat/message/:messageId - Delete a message (Unsend)
+// ============================================================================
+router.delete('/message/:messageId', authenticateToken, async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const userId = req.user.id;
 
-            // Notify Admin via Email if sender is not admin
-            if (req.user.role !== 'admin') {
-                console.log('User is not admin, attempting to send notification email...');
-                // Fetch name for nicer email
-                const { data: uData } = await supabase
-                    .from('users')
-                    .select('full_name')
-                    .eq('id', req.user.id)
-                    .single();
+    // Check if message exists
+    const msg = await Message.findById(messageId);
 
-                const senderName = uData?.full_name || 'Client';
-                
-                // Send email asynchronously (don't block response)
-                sendAdminChatMessageNotification(senderName, req.user.email, message)
-                    .catch(err => console.error('Error sending chat notification email:', err));
-            }
+    if (!msg) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
 
-            res.json(newMessage);
+    // Only sender or admin can delete
+    if (msg.senderId.toString() !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
 
-        } catch (err) {
-            console.error('Error sending message:', err);
-            res.status(500).json({ error: 'Failed to send message' });
-        }
-    });
+    // Time limit: 1 minute (non-admin only)
+    const createdTime = new Date(msg.createdAt).getTime();
+    const now = Date.now();
+    if (req.user.role !== 'admin' && (now - createdTime > 60000)) {
+      return res.status(403).json({ error: 'Message cannot be deleted after 1 minute' });
+    }
 
-    // --- ADMIN ROUTES ---
+    // Delete message
+    await Message.findByIdAndDelete(messageId);
 
-    // 4. Get All Open Sessions (Admin)
-    router.get('/admin/sessions', async (req, res) => {
-        try {
-            if (req.user.role !== 'admin') {
-                return res.status(403).json({ error: 'Admin access required' });
-            }
+    res.json({ message: 'Message deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting message:', err);
+    res.status(500).json({ error: 'Failed to delete message' });
+  }
+});
 
-            const { data: sessions, error } = await supabase
-                .from('chat_sessions')
-                .select('*, users(full_name, email)')
-                .eq('status', 'open')
-                .order('updated_at', { ascending: false });
-
-            if (error) throw error;
-
-            res.json(sessions);
-        } catch (err) {
-            console.error('Error admin sessions:', err);
-            res.status(500).json({ error: 'Failed to fetch sessions' });
-        }
-    });
-
-    // 5. Delete Message (Unsend)
-    router.delete('/message/:messageId', async (req, res) => {
-        try {
-            const { messageId } = req.params;
-            const userId = req.user.id;
-
-            // Check if message exists
-            const { data: msg, error: fetchError } = await supabase
-                .from('chat_messages')
-                .select('*')
-                .eq('id', messageId)
-                .single();
-
-            if (fetchError) throw fetchError;
-            if (!msg) return res.status(404).json({ error: 'Message not found' });
-
-            // Only sender or admin can delete
-            if (msg.sender_id != userId && req.user.role !== 'admin') {
-                return res.status(403).json({ error: 'Unauthorized' });
-            }
-
-            // Delete
-            // Restriction 1: Time limit (1 minute)
-            const createdTime = new Date(msg.created_at).getTime();
-            const now = Date.now();
-            if (req.user.role !== 'admin' && (now - createdTime > 60000)) {
-                return res.status(403).json({ error: 'Message cannot be deleted after 1 minute' });
-            }
-
-            // Restriction 2: Seen by other side
-            // We assume 'is_read' flag is managed.
-            if (req.user.role !== 'admin' && msg.is_read) {
-                 return res.status(403).json({ error: 'Message cannot be deleted after being seen' });
-            }
-
-            const { error: deleteError } = await supabase
-                .from('chat_messages')
-                .delete()
-                .eq('id', messageId);
-
-            if (deleteError) throw deleteError;
-
-            res.json({ success: true });
-        } catch (err) {
-            console.error('Error deleting message:', err);
-            res.status(500).json({ error: 'Failed to delete message' });
-        }
-    });
-
-    return router;
-};
+module.exports = router;

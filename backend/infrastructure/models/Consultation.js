@@ -6,34 +6,44 @@ const ConsultationSchema = new mongoose.Schema({
   bookingId: {
     type: String,
     unique: true,
-    required: true,
+    sparse: true, // Allow multiple null values
+    default: null,
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null, // For simple booking
   },
   client: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    default: null, // Optional
   },
   consultant: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    default: null, // Optional
   },
   service: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Service',
-    required: true,
+    default: null, // Optional
+  },
+  scheduledAt: {
+    type: Date,
+    default: null,
   },
   scheduledDate: {
     type: Date,
-    required: true,
+    default: null,
   },
   duration: {
     type: Number, // in minutes
-    required: true,
+    default: 60,
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'active', 'completed', 'cancelled'],
+    enum: ['pending', 'confirmed', 'active', 'completed', 'cancelled', 'scheduled'],
     default: 'pending',
   },
   meetingType: {
@@ -55,10 +65,14 @@ const ConsultationSchema = new mongoose.Schema({
       default: null,
     },
   },
+  notes: {
+    type: String,
+    default: null,
+  },
   payment: {
     amount: {
       type: Number,
-      required: true,
+      default: null,
     },
     currency: {
       type: String,
