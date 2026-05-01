@@ -1,0 +1,54 @@
+# Version Control
+.git
+.gitignore
+
+# Documentation (not needed in production)
+*.md
+DOCUMENTATION_INDEX.md
+ARCHITECTURE_OVERVIEW.md
+MIGRATION_COMPLETION_REPORT.md
+MONGODB_MIGRATION_*.md
+QUICK_REFERENCE*.md
+START_HERE.md
+README.md
+NEXT_STEPS_PROMPT.md
+EXECUTIVE_SUMMARY.md
+
+# Development & Testing
+scripts/
+.env.example
+.env.local
+*.test.js
+*.spec.js
+jest.config.js
+__tests__/
+
+# Node development
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build artifacts
+build/
+dist/
+.next/
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Old files
+*-old-supabase.js
+pages/temp_read.txt
+
+# Frontend (deployed separately)
+public/
+src/
+react-scripts
+
+# Uploads (stored separately, not in deployment)
+# assets/uploads/  <- Keep commented; manage uploads via storage solution

@@ -1,230 +1,219 @@
 const express = require('express');
 const router = express.Router();
 const { authenticateToken, requireAdmin } = require('./middleware');
+const { Service, Subscription, Payment, Document, User, Consultation } = require('./infrastructure/models');
+const emailService = require('./emailService');
 
-// Supabase-backed services routes
-module.exports = (supabase) => {
+// ============================================================================
+// GET /api/services - Returns all services with their plans
+// ============================================================================
+router.get('/', async (req, res) => {
+  try {
+    // Fetch active services
+    const services = await Service.find({ status: 'active' });
 
-  // GET /api/services
-  // Returns all services with their plans
-  router.get('/', async (req, res) => {
-    try {
-      // Fetch services
-      const { data: services, error: servicesError } = await supabase
-        .from('services')
-        .select('*')
-        .eq('is_active', true);
+    // Format response with empty plans array for now
+    // (Populate plans from Subscription model if needed)
+    const result = services.map(service => ({
+      ...service.toObject(),
+      plans: [] // Plans can be populated from Subscription/Product data as needed
+    }));
 
-      if (servicesError) throw servicesError;
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching services:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
-      // Fetch plans
-      const { data: plans, error: plansError } = await supabase
-        .from('plans')
-        .select('*')
-        .eq('is_active', true);
+// ============================================================================
+// GET /api/services/my-subscriptions?userId=1 - Get user's subscriptions
+// ============================================================================
+router.get('/my-subscriptions', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'User ID required' });
 
-      if (plansError) throw plansError;
+    const subscriptions = await Subscription.find({
+      userId,
+      status: { $ne: 'cancelled' }
+    })
+      .populate('serviceId')
+      .sort({ createdAt: -1 });
 
-      // Group plans by service
-      const result = services.map(service => {
-        return {
-          ...service,
-          plans: plans.filter(p => p.service_id === service.id)
-        };
-      });
+    const shaped = (subscriptions || []).map((s) => ({
+      id: s._id,
+      service_name: s.serviceId?.name || s.itemName,
+      status: s.status,
+      order_status: s.orderStatus || 'pending',
+      tracking_notes: s.trackingNotes || '',
+      end_date: s.endDate,
+      start_date: s.startDate,
+      price: s.amount || 0,
+      billing_cycle: s.billingCycle || 'monthly'
+    }));
 
-      res.json(result);
-    } catch (error) {
-      console.error('Error fetching services:', error);
-      res.status(500).json({ error: 'Server error' });
+    res.json(shaped);
+  } catch (error) {
+    console.error('Error fetching subscriptions:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ============================================================================
+// PUT /api/services/subscriptions/:subId/status - Update order status (Admin)
+// ============================================================================
+router.put('/subscriptions/:subId/status', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { subId } = req.params;
+    const { order_status, tracking_notes } = req.body;
+
+    const updateData = { orderStatus: order_status };
+    if (tracking_notes !== undefined) {
+      updateData.trackingNotes = tracking_notes;
     }
-  });
 
-  // GET /api/services/my-subscriptions?userId=1
-  router.get('/my-subscriptions', async (req, res) => {
-    try {
-        const { userId } = req.query;
-        if (!userId) return res.status(400).json({ error: 'User ID required' });
+    const subscription = await Subscription.findByIdAndUpdate(
+      subId,
+      updateData,
+      { new: true }
+    ).populate('userId');
 
-        const { data: subs, error } = await supabase
-          .from('subscriptions')
-          .select(`
-            id,
-            status,
-            end_date,
-            start_date,
-            created_at,
-            order_status,
-            tracking_notes,
-            plan:plans(id,name,price,billing_cycle,service:services(id,name))
-          `)
-          .eq('user_id', userId)
-          .neq('status', 'cancelled')
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-
-        const shaped = (subs || []).map((s) => ({
-          id: s.id,
-          plan_name: s.plan?.name,
-          service_name: s.plan?.service?.name,
-          status: s.status,
-          order_status: s.order_status || 'pending',
-          tracking_notes: s.tracking_notes || '',
-          end_date: s.end_date,
-          start_date: s.start_date,
-          price: s.plan?.price,
-          billing_cycle: s.plan?.billing_cycle
-        }));
-
-        res.json(shaped);
-    } catch (error) {
-        console.error('Error fetching subscriptions:', error);
-        res.status(500).json({ error: 'Server error' });
+    if (!subscription) {
+      return res.status(404).json({ error: 'Subscription not found' });
     }
-  });
 
-  // UPDATE ORDER STATUS (Admin)
-  router.put('/subscriptions/:subId/status', authenticateToken, requireAdmin, async (req, res) => {
-    try {
-        const { subId } = req.params;
-        const { order_status, tracking_notes } = req.body;
-
-        const updateData = { order_status };
-        if (tracking_notes !== undefined) {
-            updateData.tracking_notes = tracking_notes;
-        }
-
-        const { error } = await supabase
-          .from('subscriptions')
-          .update(updateData)
-          .eq('id', subId);
-
-        if (error) throw error;
-
-        // Get user email for notification
-        const { data: subscription, error: subError } = await supabase
-          .from('subscriptions')
-          .select('user_id, users!inner(email, full_name)')
-          .eq('id', subId)
-          .maybeSingle();
-
-        if (!subError && subscription) {
-            // Send email notification (will implement in emailService)
-            const emailService = require('./emailService');
-            await emailService.sendOrderStatusUpdate(
-                subscription.users.email,
-                subscription.users.full_name,
-                order_status,
-                tracking_notes
-            );
-        }
-
-        res.json({ message: 'Order status updated successfully' });
-    } catch (error) {
-        console.error('Error updating order status:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-  });
-
-  // GET ALL ORDERS (Admin)
-  router.get('/admin/orders', authenticateToken, requireAdmin, async (req, res) => {
-    try {
-        const { status } = req.query;
-
-        let query = supabase
-          .from('subscriptions')
-          .select(`
-            id,
-            status,
-            order_status,
-            tracking_notes,
-            created_at,
-            start_date,
-            user:users(id, full_name, email),
-            plan:plans(id, name, price, service:services(name))
-          `)
-          .order('created_at', { ascending: false });
-
-        if (status) {
-            query = query.eq('order_status', status);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        res.json(data || []);
-    } catch (error) {
-        console.error('Error fetching admin orders:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-  });
-
-  // GET ORDER STATS (Admin)
-  router.get('/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
-    try {
-        // 1. Orders Stats
-        const { data: allSubs, error: subError } = await supabase
-          .from('subscriptions')
-          .select('order_status, status');
-
-        if (subError) throw subError;
-
-        // 2. Revenue Stats (from payments)
-        const { data: payments, error: payError } = await supabase
-            .from('payments')
-            .select('amount')
-            .eq('payment_status', 'success');
-        
-        if (payError) throw payError;
-
-        const totalRevenue = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-
-        // 3. Consultations Limit
-        // Assuming consultations are in 'consultations' table
-        const { count: consultationCount, error: consultError } = await supabase
-            .from('consultations')
-            .select('*', { count: 'exact', head: true });
-
-        // If table doesn't exist or error, default to 0
-        const finalConsultations = consultError ? 0 : consultationCount;
-
-        const stats = {
-            total: allSubs.length,
-            pending: allSubs.filter(s => s.order_status === 'pending').length,
-            in_progress: allSubs.filter(s => s.order_status === 'in_progress').length,
-            completed: allSubs.filter(s => s.order_status === 'completed').length,
-            active: allSubs.filter(s => s.status === 'active').length,
-            revenue: totalRevenue,
-            consultations: finalConsultations
-        };
-
-        res.json(stats);
-    } catch (error) {
-        console.error('Error fetching stats:', error);
-        res.status(500).json({ error: 'Server error' });
-    }
-  });
-
-  // GET ALL DOCUMENTS (Admin)
-  router.get('/admin/documents', authenticateToken, requireAdmin, async (req, res) => {
+    // Get user for email notification
+    const user = await User.findById(subscription.userId);
+    if (user) {
       try {
-          const { data, error } = await supabase
-            .from('documents')
-            .select(`
-                *,
-                user:users(full_name, email)
-            `)
-            .order('uploaded_at', { ascending: false });
-          
-          if (error) throw error;
-          res.json(data);
-      } catch (error) {
-          console.error('Error fetching admin documents:', error);
-          res.status(500).json({ error: 'Server error' });
+        await emailService.sendOrderStatusUpdate(
+          user.email,
+          (user.firstName || '') + ' ' + (user.lastName || ''),
+          order_status,
+          tracking_notes
+        );
+      } catch (emailError) {
+        console.error('Error sending email notification:', emailError);
+        // Don't fail the request if email fails
       }
-  });
+    }
 
-  return router;
-};
+    res.json({ message: 'Order status updated successfully' });
+  } catch (error) {
+    console.error('Error updating order status:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ============================================================================
+// GET /api/services/admin/orders - Get all orders (Admin)
+// ============================================================================
+router.get('/admin/orders', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+
+    let query = Subscription.find()
+      .populate('userId')
+      .populate('serviceId')
+      .sort({ createdAt: -1 });
+
+    if (status) {
+      query = query.where('orderStatus').equals(status);
+    }
+
+    const orders = await query;
+
+    // Format response to match Supabase structure
+    const formatted = orders.map(order => ({
+      id: order._id,
+      status: order.status,
+      order_status: order.orderStatus,
+      tracking_notes: order.trackingNotes,
+      created_at: order.createdAt,
+      start_date: order.startDate,
+      user: {
+        id: order.userId?._id,
+        full_name: (order.userId?.firstName || '') + ' ' + (order.userId?.lastName || ''),
+        email: order.userId?.email
+      },
+      service: {
+        name: order.serviceId?.name || order.itemName
+      }
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Error fetching admin orders:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ============================================================================
+// GET /api/services/admin/stats - Get order and revenue stats (Admin)
+// ============================================================================
+router.get('/admin/stats', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    // 1. Get all subscriptions for status counts
+    const allSubscriptions = await Subscription.find();
+
+    // 2. Get successful payments for revenue calculation
+    const successfulPayments = await Payment.find({ paymentStatus: 'success' });
+    const totalRevenue = successfulPayments.reduce(
+      (sum, p) => sum + (parseFloat(p.amount) || 0),
+      0
+    );
+
+    // 3. Get consultation count
+    let consultationCount = 0;
+    try {
+      consultationCount = await Consultation.countDocuments();
+    } catch (err) {
+      console.warn('Could not count consultations:', err.message);
+      consultationCount = 0;
+    }
+
+    // Calculate stats
+    const stats = {
+      total: allSubscriptions.length,
+      pending: allSubscriptions.filter(s => s.orderStatus === 'pending').length,
+      in_progress: allSubscriptions.filter(s => s.orderStatus === 'in_progress').length,
+      completed: allSubscriptions.filter(s => s.orderStatus === 'completed').length,
+      active: allSubscriptions.filter(s => s.status === 'active').length,
+      revenue: totalRevenue,
+      consultations: consultationCount
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ============================================================================
+// GET /api/services/admin/documents - Get all documents (Admin)
+// ============================================================================
+router.get('/admin/documents', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const documents = await Document.find()
+      .populate('userId')
+      .sort({ uploadedAt: -1 });
+
+    // Format to include user details
+    const formatted = documents.map(doc => ({
+      ...doc.toObject(),
+      user: {
+        full_name: (doc.userId?.firstName || '') + ' ' + (doc.userId?.lastName || ''),
+        email: doc.userId?.email
+      }
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error('Error fetching admin documents:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+module.exports = router;

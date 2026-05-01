@@ -5,7 +5,13 @@ const mongoose = require('mongoose');
 const MessageSchema = new mongoose.Schema({
   conversationId: {
     type: String,
-    required: true,
+    default: null,
+    index: true,
+  },
+  consultationId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Consultation',
+    default: null,
     index: true,
   },
   sender: {
@@ -13,10 +19,15 @@ const MessageSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
+  senderId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
   receiver: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true,
+    default: null,
   },
   content: {
     type: String,
