@@ -4,8 +4,10 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 
-// Use local development URI by default, fallback to production URI
-const MONGODB_URI = process.env.MONGODB_DEV_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/incozi';
+// In production (Render), always use MONGODB_URI. In development, prefer DEV_URI.
+const MONGODB_URI = process.env.NODE_ENV === 'production' 
+  ? process.env.MONGODB_URI 
+  : (process.env.MONGODB_DEV_URI || process.env.MONGODB_URI || 'mongodb://localhost:27017/incozi');
 
 const mongoClient = {
   connect: async () => {
