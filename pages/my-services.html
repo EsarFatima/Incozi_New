@@ -866,6 +866,7 @@
         // Close on outside click is handled in DOMContentLoaded to avoid overwriting other onclicks if any
     </script>
     
+  <script src="../config.js"></script>
   <script src="../script.js"></script>
   <script>
     // DASHBOARD LOGIC
@@ -1237,7 +1238,7 @@
         const container = document.getElementById('user-docs-list');
         container.innerHTML = 'Loading...';
         try {
-             const res = await fetch('/api/documents/my-documents', {
+             const res = await fetch(`${window.API_CONFIG.BASE_URL}/api/documents/my-documents`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const docs = await res.json();
@@ -1252,30 +1253,19 @@
                 const div = document.createElement('div');
                 div.className = 'doc-card';
                 // Attempt to clean filename
-                const rawName = doc.file_path ? doc.file_path.split('/').pop() : 'Document'; 
-                // Remove timestamp prefix if present (e.g., 1700000000-file.pdf)
+                const rawName = doc.fileUrl ? doc.fileUrl.split('/').pop() : doc.fileName || 'Document'; 
                 const niceName = rawName.replace(/^\d+-\d+-/, '').replace(/^\d+-/, ''); // Handle both formats
 
-                // Construct download path using signed URL if available
-                let downloadPath = doc.download_url || doc.file_path;
-                
-                // Fallback for legacy paths if download_url is not set or matches file_path (for local)
-                if ((!doc.download_url) && !downloadPath.startsWith('http') && !downloadPath.startsWith('uploads/') && !downloadPath.startsWith('assets/uploads/')) {
-                     downloadPath = 'uploads/' + downloadPath;
-                }
-                
-                // Ensure local paths start with / if they aren't absolute URI
-                if (!downloadPath.startsWith('http')) {
-                     downloadPath = downloadPath.replace('assets/', ''); // Remove assets prefix if present
-                     if (!downloadPath.startsWith('/')) {
-                        downloadPath = '/' + downloadPath;
-                     }
+                // Construct download path
+                let downloadPath = doc.fileUrl;
+                if (!downloadPath.startsWith('http') && !downloadPath.startsWith('/')) {
+                    downloadPath = '/' + downloadPath;
                 }
 
                 div.innerHTML = `
                     <div class="doc-icon"><i class="fa fa-file-alt"></i></div>
                     <div class="doc-name" style="word-break: break-all; font-weight:600;">${niceName}</div>
-                    <div class="doc-date">${new Date(doc.uploaded_at).toLocaleDateString()}</div>
+                    <div class="doc-date">${new Date(doc.createdAt).toLocaleDateString()}</div>
                    <a href="${downloadPath}" target="_blank" class="download-link" style="font-size: 0.8rem; margin-top: 0.5rem; text-decoration: none; color: var(--accent-200);">
                         <i class="fa fa-download"></i> Download
                     </a>

@@ -26,11 +26,11 @@ const upload = multer({ storage: storage });
 // ============================================================================
 // GET /api/documents/my-documents - Fetch user specific documents
 // ============================================================================
-router.get('/my-documents', async (req, res) => {
+router.get('/my-documents', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.id;
-    const documents = await Document.find({ userId })
-      .sort({ uploadedAt: -1 });
+    const documents = await Document.find({ user: userId })
+      .sort({ createdAt: -1 });
 
     res.json(documents);
   } catch (err) {
@@ -42,7 +42,7 @@ router.get('/my-documents', async (req, res) => {
 // ============================================================================
 // POST /api/documents/upload - Upload a new document
 // ============================================================================
-router.post('/upload', upload.array('documents'), async (req, res) => {
+router.post('/upload', authenticateToken, upload.array('documents'), async (req, res) => {
   try {
     const userId = req.user.id;
     const files = req.files;
@@ -52,16 +52,27 @@ router.post('/upload', upload.array('documents'), async (req, res) => {
     }
 
     const records = files.map(file => ({
-      userId,
-      filePath: file.path.replace(/\\/g, '/'), // Store relative path normalized
-      uploadedBy: 'client',
-      documentType: 'User Upload',
-      uploadedAt: new Date()
+      user: userId,
+      fileName: file.originalname,
+      fileType: file.mimetype || 'application/octet-stream',
+      fileSize: file.size,
+      fileUrl: file.path.replace(/\\/g, '/'), // Store relative path normalized
+      category: 'other',
+      visibility: 'private',
+      metadata: {
+        uploadedBy: userId,
+        tags: [],
+        isArchived: false
+      }
     }));
 
-    await Document.insertMany(records);
+    const uploaded = await Document.insertMany(records);
 
-    res.json({ message: 'Files uploaded successfully', count: files.length });
+    res.json({ 
+      message: 'Files uploaded successfully', 
+      count: files.length,
+      documents: uploaded
+    });
   } catch (err) {
     console.error('Upload docs error:', err);
     res.status(500).json({ error: err.message });
