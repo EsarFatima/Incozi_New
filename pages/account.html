@@ -7,6 +7,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="../style.css">
+  <!-- API Configuration -->
+  <script src="../config.js"></script>
 </head>
 <body>
 
@@ -288,7 +290,7 @@
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Logging In...';
 
         try {
-          const response = await fetch('/api/auth/login', {
+          const response = await fetch(`${window.API_CONFIG.BASE_URL}/api/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
@@ -337,11 +339,16 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...';
 
+        // Parse full name into first and last name
+        const nameParts = name.trim().split(' ');
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(' ') || '';
+
         try {
-          const response = await fetch('/api/auth/signup', {
+          const response = await fetch(`${window.API_CONFIG.BASE_URL}/api/auth/signup`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ full_name: name, email, password })
+            body: JSON.stringify({ firstName, lastName, email, password })
           });
 
           const data = await response.json();
