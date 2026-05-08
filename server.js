@@ -45,7 +45,13 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname)));
+
+// For Vercel, server.js is imported as a function by api/index.js
+// Serving static files in development or if running standalone
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  app.use(express.static(path.join(__dirname)));
+}
+
 // Make uploads publicly accessible (secured by difficult filenames, but realistically should be proxied)
 // For this stage, static serving is fine.
 app.use('/uploads', express.static(path.join(__dirname, 'assets/uploads')));
