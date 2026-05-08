@@ -4,7 +4,7 @@
 const CONFIG = {
   // API Configuration
   api: {
-    baseURL: process.env.API_URL || 'http://localhost:3000',
+    baseURL: '', // Relative URL for production
     timeout: 30000, // ms
   },
 

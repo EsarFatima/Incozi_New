@@ -26,7 +26,7 @@ mongoClient.connect().then(() => {
   console.log('✅ MongoDB database initialized');
 }).catch(err => {
   console.error('❌ Failed to connect to MongoDB:', err);
-  process.exit(1);
+  // No longer exiting process here as handled in mongoClient.js
 });
 
 app.use(cors());

@@ -10,12 +10,17 @@ const MONGODB_URI = process.env.MONGODB_DEV_URI || process.env.MONGODB_URI || 'm
 const mongoClient = {
   connect: async () => {
     try {
-      await mongoose.connect(MONGODB_URI);
+      // Set a timeout for the connection attempt
+      await mongoose.connect(MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000
+      });
       console.log('✅ MongoDB connected successfully');
       return mongoose.connection;
     } catch (error) {
       console.error('❌ MongoDB connection failed:', error.message);
-      process.exit(1);
+      console.log('⚠️ Continuing without MongoDB (Limited functionality)...');
+      // Return a dummy connection object or null to prevent crash
+      return null;
     }
   },
 
