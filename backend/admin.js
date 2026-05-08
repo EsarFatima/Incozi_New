@@ -49,17 +49,18 @@ router.get('/clients', async (req, res) => {
 // ============================================================================
 // GET /api/admin/documents - Get all documents
 // ============================================================================
-router.get('/documents', async (req, res) => {
+router.get('/documents', requireAdmin, async (req, res) => {
   try {
     const docs = await Document.find()
-      .populate('userId', 'firstName lastName email')
-      .sort({ uploadedAt: -1 });
+      .populate('user', 'firstName lastName email')
+      .populate('metadata.uploadedBy', 'firstName lastName email')
+      .sort({ createdAt: -1 });
 
     // Generate local URLs for documents
     const signedDocs = docs.map(doc => {
-      let downloadUrl = doc.filePath;
-      if (doc.filePath && !doc.filePath.startsWith('http')) {
-        downloadUrl = `/uploads/${path.basename(doc.filePath)}`;
+      let downloadUrl = doc.fileUrl;
+      if (doc.fileUrl && !doc.fileUrl.startsWith('http')) {
+        downloadUrl = `/uploads/${path.basename(doc.fileUrl)}`;
       }
 
       return {
@@ -99,7 +100,7 @@ router.get('/payment-methods', async (req, res) => {
 // ============================================================================
 // DELETE /api/admin/documents/:id - Delete a document
 // ============================================================================
-router.delete('/documents/:id', async (req, res) => {
+router.delete('/documents/:id', requireAdmin, async (req, res) => {
   try {
     const docId = req.params.id;
 
@@ -114,10 +115,10 @@ router.delete('/documents/:id', async (req, res) => {
     await Document.findByIdAndDelete(docId);
 
     // Clean up physical file if it exists
-    if (doc.filePath) {
-      if (!doc.filePath.startsWith('http')) {
+    if (doc.fileUrl) {
+      if (!doc.fileUrl.startsWith('http')) {
         // Try to delete local file
-        const filePath = path.join(__dirname, '..', doc.filePath);
+        const filePath = path.join(__dirname, '..', doc.fileUrl);
 
         if (fs.existsSync(filePath)) {
           try {

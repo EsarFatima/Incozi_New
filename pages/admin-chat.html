@@ -237,12 +237,20 @@
 
         sessions.forEach(s => {
             const div = document.createElement('div');
-            div.className = 'session-item ' + (s.id === currentSessionId ? 'active' : '');
+            div.className = 'session-item ' + (s._id === currentSessionId ? 'active' : '');
             
-            const date = new Date(s.updated_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            const date = new Date(s.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            // Handle user name - userId is populated with user object
+            let userName = 'User';
+            if(s.userId) {
+                if(typeof s.userId === 'object' && s.userId.firstName) {
+                    userName = s.userId.firstName + ' ' + (s.userId.lastName || '');
+                }
+            }
             
             div.innerHTML = `
-                <div class="session-user">${s.users ? s.users.full_name : 'User ' + s.user_id}</div>
+                <div class="session-user">${userName}</div>
                 <div class="session-time">Last active: ${date}</div>
             `;
             
@@ -252,8 +260,14 @@
     }
 
     async function selectSession(session) {
-        currentSessionId = session.id;
-        activeSessionUser = session.users ? session.users.full_name : 'User';
+        currentSessionId = session._id;
+        
+        // Get user name from populated userId
+        if(session.userId && typeof session.userId === 'object') {
+            activeSessionUser = (session.userId.firstName || 'User') + ' ' + (session.userId.lastName || '');
+        } else {
+            activeSessionUser = 'User';
+        }
         
         document.getElementById('active-chat-header').textContent = `Chat with ${activeSessionUser}`;
         document.getElementById('admin-input').disabled = false;
@@ -287,7 +301,7 @@
         const todayStr = now.toLocaleDateString();
 
         msgs.forEach(m => {
-            const date = new Date(m.created_at);
+            const date = new Date(m.createdAt);
             const dateStr = date.toLocaleDateString();
 
             if (dateStr !== lastDate) {
@@ -304,17 +318,25 @@
             }
 
             const div = document.createElement('div');
-            const isAdminCode = (m.users && m.users.role === 'admin'); 
             
-            div.className = `msg-bubble ${isAdminCode ? 'msg-admin' : 'msg-user'}`;
+            // Determine if message is from admin or user
+            // Check the role of the sender
+            let isAdmin = false;
+            if(m.sender && typeof m.sender === 'object' && m.sender.role === 'admin') {
+                isAdmin = true;
+            } else if(m.senderId && typeof m.senderId === 'object' && m.senderId.role === 'admin') {
+                isAdmin = true;
+            }
+            
+            div.className = `msg-bubble ${isAdmin ? 'msg-admin' : 'msg-user'}`;
             
             const timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
             // Add delete button for Admin
             div.innerHTML = `
-                ${m.message} 
+                ${m.content} 
                 <span class="msg-time" style="display:block; font-size:0.75rem; margin-top:4px; opacity:0.8; text-align:right;">${timeStr}</span>
-                <button class="delete-msg-btn" onclick="deleteMessage('${m.id}')" title="Delete message"><i class="fa-solid fa-trash"></i></button>
+                <button class="delete-msg-btn" onclick="deleteMessage('${m._id}')" title="Delete message"><i class="fa-solid fa-trash"></i></button>
             `;
             container.appendChild(div);
         });

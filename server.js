@@ -29,7 +29,21 @@ mongoClient.connect().then(() => {
   // No longer exiting process here as handled in mongoClient.js
 });
 
-app.use(cors());
+// ✅ CORS Configuration for production
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    /\.vercel\.app$/,  // Allow all Vercel deployments
+    /\.netlify\.app$/, // Allow all Netlify deployments
+    process.env.FRONTEND_URL // Allow custom frontend URL
+  ].filter(Boolean),
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname)));
 // Make uploads publicly accessible (secured by difficult filenames, but realistically should be proxied)

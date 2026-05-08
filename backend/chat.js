@@ -80,18 +80,27 @@ router.post('/message', authenticateToken, async (req, res) => {
     const { sessionId, message } = req.body;
     const senderId = req.user.id;
 
+    console.log('📨 Chat Message Received:', { sessionId, message: message?.substring(0, 50), senderId });
+
     if (!message || !sessionId) {
+      console.warn('❌ Missing fields:', { sessionId: !!sessionId, message: !!message });
       return res.status(400).json({ error: 'Missing sessionId or message' });
+    }
+
+    if (message.trim().length === 0) {
+      return res.status(400).json({ error: 'Message cannot be empty' });
     }
 
     // Verify access to session
     const consultation = await Consultation.findById(sessionId);
 
     if (!consultation) {
+      console.warn('❌ Consultation not found:', sessionId);
       return res.status(404).json({ error: 'Session not found' });
     }
 
     if (consultation.userId.toString() !== senderId && req.user.role !== 'admin') {
+      console.warn('❌ Unauthorized access:', { consultationUserId: consultation.userId, senderId });
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
@@ -100,9 +109,13 @@ router.post('/message', authenticateToken, async (req, res) => {
       consultationId: sessionId,
       sender: senderId,
       senderId: senderId,
-      content: message,
+      content: message.trim(),
+      messageType: 'text',
+      status: 'sent',
       createdAt: new Date()
     });
+
+    console.log('✅ Message created:', newMessage._id);
 
     // Update consultation timestamp
     consultation.updatedAt = new Date();
@@ -123,7 +136,7 @@ router.post('/message', authenticateToken, async (req, res) => {
 
     res.json(newMessage);
   } catch (err) {
-    console.error('Error sending message:', err);
+    console.error('❌ Error sending message:', err);
     res.status(500).json({ error: 'Failed to send message', details: err.message });
   }
 });

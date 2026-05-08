@@ -98,8 +98,8 @@
                 
                 if(!res.ok) throw new Error('Failed to start session');
                 
-                const session = await res.json();
-                sessionId = session.id;
+                const data = await res.json();
+                sessionId = data.session.id;
                 
                 loadMessages();
                 // Start polling
@@ -140,7 +140,7 @@
         const todayStr = new Date().toDateString();
 
         msgs.forEach(m => {
-            const date = new Date(m.created_at);
+            const date = new Date(m.createdAt);
             const dateStr = date.toDateString();
 
             // Insert Date Separator if new day
@@ -156,15 +156,16 @@
             }
 
             const div = document.createElement('div');
-            // Determine if user or admin sender
-            const type = (m.sender_id == userId) ? 'user' : 'admin';
+            // Determine if user or admin sender (use senderId or sender._id)
+            const senderIdStr = (m.senderId && typeof m.senderId === 'object') ? m.senderId._id : (m.senderId || m.sender);
+            const type = (senderIdStr == userId) ? 'user' : 'admin';
             div.className = `chat-msg ${type} msg-bubble`; 
             div.style.position = 'relative'; // Ensure positioning context
 
             // Only Time
             const timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
-            div.innerHTML = `${m.message} <span class="msg-time">${timeStr}</span>`;
+            div.innerHTML = `${m.content} <span class="msg-time">${timeStr}</span>`;
 
             // Add Delete Button for User's own messages
             if (type === 'user') {
@@ -172,7 +173,7 @@
                 delBtn.className = 'msg-delete-btn';
                 delBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
                 delBtn.title = 'Unsend message';
-                delBtn.onclick = (e) => unsendMessage(m.id, e);
+                delBtn.onclick = (e) => unsendMessage(m._id, e);
                 div.appendChild(delBtn);
             }
 
