@@ -36,18 +36,6 @@ dist/
 # IDE & Editor
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# Old files
-*-old-supabase.js
-pages/temp_read.txt
-
-# Frontend (deployed separately)
-public/
-src/
 react-scripts
 
 # Uploads (stored separately, not in deployment)
