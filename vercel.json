@@ -11,18 +11,16 @@
       "use": "@vercel/node"
     }
   ],
-  "cleanUrls": true,
-  "routes": [
+  "buildCommand": "npm run build",
+  "outputDirectory": "build",
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "api/index.js"
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
     },
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
