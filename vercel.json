@@ -26,11 +26,6 @@
       "dest": "/assets/$1"
     },
     {
-      "src": "/(.*)",
-      "dest": "/$1",
-      "continue": true
-    },
-    {
       "handle": "filesystem"
     },
     {
