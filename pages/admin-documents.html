@@ -455,14 +455,20 @@
     async function loadDocuments() {
         const container = document.getElementById('docs-container');
         try {
+            console.log('📄 Loading documents...');
             const res = await fetch('/api/admin/documents', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             
-            if (!res.ok) throw new Error('Failed to fetch');
+            console.log('📄 Response status:', res.status);
+            
+            if (!res.ok) {
+                const error = await res.json();
+                throw new Error('Failed to fetch: ' + (error.error || res.statusText));
+            }
             
             const docs = await res.json();
-            console.log('Documents loaded:', docs);
+            console.log('📄 Documents loaded:', docs);
             
             if (docs.length === 0) {
                  container.innerHTML = '<div style="text-align:center; padding: 2rem; color: #999;">No documents uploaded yet.</div>';
@@ -472,10 +478,11 @@
             // Group documents by user
             const groupedByUser = {};
             docs.forEach(doc => {
-                const userId = doc.user_id;
+                // Handle user field - it could be populated or just an ID
+                const userId = (doc.user && typeof doc.user === 'object') ? doc.user._id : doc.user;
                 if (!groupedByUser[userId]) {
                     groupedByUser[userId] = {
-                        user: doc.users,
+                        user: doc.user,
                         docs: []
                     };
                 }
@@ -484,19 +491,39 @@
             
             // Convert to array and sort by user created_at (newest first)
             const sortedGroups = Object.values(groupedByUser).sort((a, b) => {
-                const dateA = new Date(a.user.created_at);
-                const dateB = new Date(b.user.created_at);
+                const dateA = new Date(a.user.createdAt || a.user.created_at);
+                const dateB = new Date(b.user.createdAt || b.user.created_at);
                 return dateB - dateA; // Newest first
             });
             
             // Render grouped documents
-            container.innerHTML = sortedGroups.map(group => `
-                <div class="user-group">
+            const html = sortedGroups.map(group => {
+                const userFullName = ((group.user.firstName || '') + ' ' + (group.user.lastName || '')).trim();
+                const userCreatedDate = new Date(group.user.createdAt).toLocaleDateString();
+                
+                const docRows = group.docs.map(doc => {
+                    const rawName = doc.fileUrl.split('/').pop();
+                    const cleanName = rawName.replace(/^\d+-\d+-/, '');
+                    const uploadDate = new Date(doc.createdAt).toLocaleDateString();
+                    const docType = doc.category || 'File';
+                    
+                    return `<tr>
+                        <td style="font-weight: 600; color: var(--text-100);">${cleanName}</td>
+                        <td>${docType}</td>
+                        <td>${uploadDate}</td>
+                        <td style="display: flex; gap: 1rem;">
+                            <a href="${doc.download_url || (doc.fileUrl.startsWith('uploads/') ? '../' + doc.fileUrl : '../uploads/' + doc.fileUrl)}" target="_blank" style="color: var(--accent-200); font-weight: 600; text-decoration: none;">Download</a>
+                            <button class="delete-doc-btn" data-doc-id="${doc._id}" style="background: none; border: none; color: #ef4444; font-weight: 600; cursor: pointer; text-decoration: none; padding: 0;">Delete</button>
+                        </td>
+                    </tr>`;
+                }).join('');
+                
+                return `<div class="user-group">
                     <div class="user-group-header">
-                        <div class="user-group-avatar">${group.user.full_name.charAt(0).toUpperCase()}</div>
+                        <div class="user-group-avatar">${userFullName.charAt(0).toUpperCase()}</div>
                         <div class="user-group-info">
-                            <h3>${group.user.full_name}</h3>
-                            <p>${group.user.email}${group.user.created_at ? ' • Joined ' + new Date(group.user.created_at).toLocaleDateString() : ''}</p>
+                            <h3>${userFullName}</h3>
+                            <p>${group.user.email || ''}${userCreatedDate ? ' • Joined ' + userCreatedDate : ''}</p>
                         </div>
                         <div style="margin-left: auto; font-size: 0.9rem; color: var(--text-200);">
                             ${group.docs.length} document${group.docs.length !== 1 ? 's' : ''}
@@ -512,31 +539,18 @@
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                ${group.docs.map(doc => {
-                                    const rawName = doc.file_path.split('/').pop();
-                                    const cleanName = rawName.replace(/^\d+-\d+-/, '');
-                                    return `
-                                        <tr>
-                                            <td style="font-weight: 600; color: var(--text-100);">${cleanName}</td>
-                                            <td>${doc.document_type || 'File'}</td>
-                                            <td>${new Date(doc.uploaded_at).toLocaleDateString()}</td>
-                                            <td style="display: flex; gap: 1rem;">
-                                                <a href="${doc.download_url || (doc.file_path.startsWith('uploads/') ? '../' + doc.file_path : '../uploads/' + doc.file_path)}" target="_blank" style="color: var(--accent-200); font-weight: 600; text-decoration: none;">Download</a>
-                                                <button class="delete-doc-btn" data-doc-id="${doc.id}" style="background: none; border: none; color: #ef4444; font-weight: 600; cursor: pointer; text-decoration: none; padding: 0;">Delete</button>
-                                            </td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
+                            <tbody>${docRows}</tbody>
                         </table>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
+            
+            container.innerHTML = html;
+            console.log('✅ Documents rendered successfully');
             
         } catch (error) {
-            console.error(error);
-            container.innerHTML = '<div style="text-align:center; padding: 2rem; color: red;">Error loading documents.</div>';
+            console.error('❌ Error loading documents:', error);
+            container.innerHTML = '<div style="text-align:center; padding: 2rem; color: red;">Error loading documents: ' + error.message + '</div>';
         }
     }
     
