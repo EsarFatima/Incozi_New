@@ -104,7 +104,11 @@ export default function Header() {
                 <FontAwesomeIcon icon={faUser} />
               </Link>
             ) : (
-              <Link to="/dashboard" className="header-icon" title="Dashboard">
+              <Link 
+                to={user?.role === 'admin' ? "/admin" : "/dashboard"} 
+                className="header-icon" 
+                title={user?.role === 'admin' ? "Admin Panel" : "Dashboard"}
+              >
                 <FontAwesomeIcon icon={faUser} style={{ color: 'var(--accent-200)' }} />
               </Link>
             )}
@@ -249,11 +253,15 @@ export default function Header() {
               <>
                 <li className="sidebar-user-info" style={{ padding: '0.85rem 1.5rem', marginBottom: '0.5rem' }}>
                    <div style={{ fontWeight: '700', color: 'var(--text-100)' }}>{user?.full_name || 'User'}</div>
-                   <div style={{ fontSize: '0.8rem', color: 'var(--text-200)' }}>{user?.email}</div>
+                   <div style={{ fontSize: '0.8rem', color: 'var(--text-200)' }}>{user?.email} ({user?.role})</div>
                 </li>
                 <li>
-                  <Link to="/dashboard" className="sidebar-link-item" onClick={handleSidebarClose}>
-                    <FontAwesomeIcon icon={faBriefcase} /> My Services
+                  <Link 
+                    to={user?.role === 'admin' ? "/admin" : "/dashboard"} 
+                    className="sidebar-link-item" 
+                    onClick={handleSidebarClose}
+                  >
+                    <FontAwesomeIcon icon={user?.role === 'admin' ? faUser : faBriefcase} /> {user?.role === 'admin' ? 'Admin Panel' : 'My Services'}
                   </Link>
                 </li>
               </>

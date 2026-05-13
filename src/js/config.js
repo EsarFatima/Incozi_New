@@ -4,7 +4,9 @@
 const CONFIG = {
   // API Configuration
   api: {
-    baseURL: '', // Relative URL for production
+    baseURL: window.location.hostname.includes('vercel.app') 
+      ? 'https://incozi-new.onrender.com' 
+      : '', // Relative URL for development
     timeout: 30000, // ms
   },
 

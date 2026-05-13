@@ -34,6 +34,7 @@ const corsOptions = {
   origin: [
     'http://localhost:3000',
     'http://localhost:3001',
+    'https://incozi-new.vercel.app',
     /\.vercel\.app$/,  // Allow all Vercel deployments
     /\.netlify\.app$/, // Allow all Netlify deployments
     process.env.FRONTEND_URL // Allow custom frontend URL

@@ -44,7 +44,6 @@ function App() {
               <Route path="/consultation" element={<Consultation />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/admin" element={<AdminPanel />} />
-              <Route path="/account" element={<Auth />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/incorporation" element={<Incorporation />} />
               <Route path="/auth" element={<Auth />} />

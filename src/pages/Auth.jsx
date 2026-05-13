@@ -29,7 +29,11 @@ function Auth() {
         : await register(formData);
 
       if (result.success) {
-        navigate('/dashboard');
+        if (result.user?.role === 'admin') {
+          navigate('/admin');
+        } else {
+          navigate('/dashboard');
+        }
       } else {
         alert(result.error);
       }

@@ -16,7 +16,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "/api/:path*"
+      "destination": "https://incozi-new.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
